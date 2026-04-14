@@ -6,15 +6,20 @@ function Users() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: "", email: "", password: "", role: "MECANICO" });
+  const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const pageSize = 10;
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/users");
-      setUsers(res.data);
+      const res = await api.get(`/users?page=${page}&pageSize=${pageSize}`);
+      setUsers(res.data.data);
+      setTotalUsers(res.data.total);
     } catch (err) {
       setError("Error al cargar usuarios");
     } finally {
@@ -24,25 +29,49 @@ function Users() {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [page]);
 
-  const handleCreate = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     setError("");
     setSuccess("");
 
     try {
-      await api.post("/auth/register", formData);
-      setSuccess("Usuario creado exitosamente");
+      if (editingId) {
+        // En edición, se pueden cambiar nombre, email, rol y password (si se escribió)
+        const updateData = { name: formData.name, email: formData.email, role: formData.role };
+        if (formData.password) {
+          updateData.password = formData.password;
+        }
+        await api.patch(`/users/${editingId}`, updateData);
+        setSuccess("Usuario actualizado exitosamente");
+      } else {
+        await api.post("/auth/register", formData);
+        setSuccess("Usuario creado exitosamente");
+      }
       setFormData({ name: "", email: "", password: "", role: "MECANICO" });
+      setEditingId(null);
       setShowForm(false);
       loadUsers();
     } catch (err) {
-      setError(err.response?.data?.error || "Error al crear usuario");
+      setError(err.response?.data?.error || "Error al guardar el usuario");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditClick = (user) => {
+    setFormData({ name: user.name, email: user.email, password: "", role: user.role });
+    setEditingId(user.id);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setFormData({ name: "", email: "", password: "", role: "MECANICO" });
   };
 
   const toggleActive = async (user) => {
@@ -63,6 +92,17 @@ function Users() {
     }
   };
 
+  const deleteUser = async (id) => {
+    if (!window.confirm("¿Estás seguro de que deseas eliminar a este usuario permanentemente?")) return;
+    try {
+      await api.delete(`/users/${id}`);
+      setSuccess("Usuario eliminado");
+      loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.error || "Error al eliminar usuario");
+    }
+  };
+
   return (
     <div className="page-card">
       <div className="page-header">
@@ -72,7 +112,7 @@ function Users() {
         </div>
         <button
           className="primary-button"
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => showForm ? handleCancelForm() : setShowForm(true)}
         >
           {showForm ? "Cancelar" : "Nuevo Usuario"}
         </button>
@@ -82,7 +122,7 @@ function Users() {
       {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
       {showForm && (
-        <form className="user-create-form" onSubmit={handleCreate}>
+        <form className="user-create-form" onSubmit={handleSave}>
           <div className="form-row">
             <div className="form-field">
               <label>Nombre</label>
@@ -107,10 +147,10 @@ function Users() {
               <label>Contraseña</label>
               <input
                 type="password"
-                placeholder="Mínimo 6 caracteres"
+                placeholder={editingId ? "Ingresada previamente (Dejar en blanco para conservar)" : "Mínimo 6 caracteres"}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
+                required={!editingId}
               />
             </div>
             <div className="form-field">
@@ -125,7 +165,7 @@ function Users() {
             </div>
           </div>
           <button className="primary-button" type="submit" disabled={saving}>
-            {saving ? "Creando..." : "Crear Usuario"}
+            {saving ? "Guardando..." : (editingId ? "Actualizar Usuario" : "Crear Usuario")}
           </button>
         </form>
       )}
@@ -164,6 +204,13 @@ function Users() {
                   <td>
                     <div className="user-actions">
                       <button
+                        className="action-btn action-primary"
+                        onClick={() => handleEditClick(user)}
+                        title="Editar nombre"
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
                         className="action-btn"
                         onClick={() => changeRole(user, user.role === "ADMIN" ? "MECANICO" : "ADMIN")}
                         title="Cambiar rol"
@@ -177,12 +224,39 @@ function Users() {
                       >
                         {user.active ? "🚫 Desactivar" : "✅ Activar"}
                       </button>
+                      <button
+                        className="action-btn action-danger"
+                        onClick={() => deleteUser(user.id)}
+                        title="Eliminar usuario"
+                      >
+                        🗑️ Eliminar
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {totalUsers > pageSize && (
+            <div className="pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 15, marginTop: 20 }}>
+              <button
+                className="secondary-button"
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Anterior
+              </button>
+              <span>Página {page} de {Math.ceil(totalUsers / pageSize)}</span>
+              <button
+                className="secondary-button"
+                disabled={page === Math.ceil(totalUsers / pageSize)}
+                onClick={() => setPage(page + 1)}
+              >
+                Siguiente
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

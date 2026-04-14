@@ -25,6 +25,8 @@ function OrderDetail() {
 
   // Historial
   const [history, setHistory] = useState([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyPage, setHistoryPage] = useState(1);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("detalle");
 
@@ -53,14 +55,15 @@ function OrderDetail() {
   const getHistory = useCallback(async () => {
     setHistoryLoading(true);
     try {
-      const res = await api.get(`/work-orders/${id}/history`);
+      const res = await api.get(`/work-orders/${id}/history?page=${historyPage}&pageSize=100`);
       setHistory(res.data.data);
+      setHistoryTotal(res.data.total);
     } catch (err) {
       console.error("Error al cargar historial:", err);
     } finally {
       setHistoryLoading(false);
     }
-  }, [id]);
+  }, [id, historyPage]);
 
   useEffect(() => {
     getOrder();
@@ -306,24 +309,25 @@ function OrderDetail() {
 
             <div className="add-item-card" style={{ marginTop: 20, padding: 20, background: "#f8fafc", borderRadius: 12, border: "1px dashed #cbd5e1" }}>
               <h4 style={{ marginTop: 0 }}>Añadir nuevo ítem</h4>
-              <form onSubmit={handleAddItem} className="form-row" style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div className="form-field" style={{ flex: 1, minWidth: '150px' }}>
+              <form onSubmit={handleAddItem} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '15px' }}>
+                <div className="form-field" style={{ flex: '0 0 auto', minWidth: '140px' }}>
                   <label>Tipo</label>
-                  <select value={newItem.type} onChange={e => setNewItem({...newItem, type: e.target.value})}>
+                  <select value={newItem.type} onChange={e => setNewItem({...newItem, type: e.target.value})} style={{ width: '100%' }}>
                     <option value="REPUESTO">REPUESTO</option>
                     <option value="MANO_OBRA">MANO DE OBRA</option>
                   </select>
                 </div>
-                <div className="form-field" style={{ flex: 2, minWidth: '200px' }}>
+                <div className="form-field" style={{ flex: '1 1 200px', minWidth: '200px' }}>
                   <label>Descripción</label>
                   <input
                     placeholder="Ej. Cambio de Aceite"
                     value={newItem.description}
                     onChange={e => setNewItem({...newItem, description: e.target.value})}
                     required
+                    style={{ width: '100%' }}
                   />
                 </div>
-                <div className="form-field" style={{ flex: 0.5, minWidth: '80px' }}>
+                <div className="form-field" style={{ flex: '0 0 auto', minWidth: '80px' }}>
                   <label>Cant.</label>
                   <input
                     type="number"
@@ -331,9 +335,10 @@ function OrderDetail() {
                     value={newItem.count}
                     onChange={e => setNewItem({...newItem, count: e.target.value})}
                     required
+                    style={{ width: '100%' }}
                   />
                 </div>
-                <div className="form-field" style={{ flex: 1, minWidth: '120px' }}>
+                <div className="form-field" style={{ flex: '0 0 auto', minWidth: '120px' }}>
                   <label>Costo Un. ($)</label>
                   <input
                     type="number"
@@ -342,10 +347,11 @@ function OrderDetail() {
                     value={newItem.unitValue}
                     onChange={e => setNewItem({...newItem, unitValue: e.target.value})}
                     required
+                    style={{ width: '100%' }}
                   />
                 </div>
-                <button type="submit" className="primary-button" disabled={itemSaving} style={{ marginBottom: '16px' }}>
-                  Añadir
+                <button type="submit" className="primary-button" disabled={itemSaving} style={{ flex: '0 0 auto', padding: '10px 20px', height: '42px' }}>
+                  {itemSaving ? "Añadiendo..." : "Añadir"}
                 </button>
               </form>
             </div>
@@ -404,6 +410,26 @@ function OrderDetail() {
                   </div>
                 </div>
               ))}
+
+              {historyTotal > 100 && (
+                <div className="pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 15, marginTop: 30 }}>
+                  <button
+                    className="secondary-button"
+                    disabled={historyPage === 1}
+                    onClick={() => setHistoryPage(historyPage - 1)}
+                  >
+                    Anterior
+                  </button>
+                  <span>Página {historyPage} de {Math.ceil(historyTotal / 100)}</span>
+                  <button
+                    className="secondary-button"
+                    disabled={historyPage === Math.ceil(historyTotal / 100)}
+                    onClick={() => setHistoryPage(historyPage + 1)}
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

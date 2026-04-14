@@ -29,6 +29,7 @@ Frontend moderno y responsivo para el sistema de gestión de orden de trabajo de
 - **Validación de Formularios**: Validación en cliente antes de enviar
 - **Manejo de Errores**: Feedback visual inmediato al usuario
 - **Loading States**: Indicadores visuales durante operaciones asincrónicas
+- **Selectores Interactivos**: Uso de react-select para una mejor experiencia en selección de opciones (placas, estados, clientes, motos)
 
 ## 📦 Requirements
 
