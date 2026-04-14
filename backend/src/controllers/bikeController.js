@@ -44,10 +44,9 @@ exports.createBike = async (req, res) => {
   }
 };
 
-// Obtener motos (buscar por placa)
 exports.getBikes = async (req, res) => {
   try {
-    const { plate } = req.query;
+    const { plate, page, pageSize } = req.query;
 
     let where = {};
 
@@ -57,12 +56,24 @@ exports.getBikes = async (req, res) => {
       };
     }
 
-    const bikes = await Bike.findAll({
+    const query = {
       where,
-      include: Client
-    });
+      include: Client,
+      order: [["createdAt", "DESC"]]
+    };
 
-    res.json(bikes);
+    if (page && pageSize) {
+      const limit = parseInt(pageSize, 10);
+      const offset = (parseInt(page, 10) - 1) * limit;
+      query.limit = limit;
+      query.offset = offset;
+
+      const bikes = await Bike.findAndCountAll(query);
+      return res.json({ total: bikes.count, data: bikes.rows });
+    } else {
+      const bikes = await Bike.findAll(query);
+      return res.json(bikes);
+    }
 
   } catch (error) {
     res.status(500).json({ error: error.message });

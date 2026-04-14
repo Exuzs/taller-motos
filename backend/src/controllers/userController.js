@@ -6,12 +6,24 @@ const { User } = require("../models");
  */
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
+    const { page, pageSize } = req.query;
+    const query = {
       attributes: { exclude: ["password_hash"] },
       order: [["createdAt", "DESC"]]
-    });
+    };
 
-    res.json(users);
+    if (page && pageSize) {
+      const limit = parseInt(pageSize, 10);
+      const offset = (parseInt(page, 10) - 1) * limit;
+      query.limit = limit;
+      query.offset = offset;
+      
+      const users = await User.findAndCountAll(query);
+      return res.json({ total: users.count, data: users.rows });
+    } else {
+      const users = await User.findAll(query);
+      return res.json(users);
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -24,7 +36,7 @@ exports.getUsers = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { role, active, name } = req.body;
+    const { role, active, name, email, password } = req.body;
 
     const user = await User.findByPk(id);
 
@@ -42,9 +54,6 @@ exports.updateUser = async (req, res) => {
       if (Number(id) === req.user.id && role !== user.role) {
         return res.status(400).json({ error: "No puede cambiar su propio rol" });
       }
-      if (!["ADMIN", "MECANICO"].includes(role)) {
-        return res.status(400).json({ error: "Rol inválido" });
-      }
       user.role = role;
     }
 
@@ -54,6 +63,14 @@ exports.updateUser = async (req, res) => {
 
     if (name !== undefined) {
       user.name = name;
+    }
+
+    if (email !== undefined) {
+      user.email = email;
+    }
+
+    if (password !== undefined && password.trim() !== "") {
+      user.password_hash = password;
     }
 
     await user.save();
