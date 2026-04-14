@@ -64,6 +64,7 @@ npm install
 # DB_USER=root
 # DB_PASS=tu_contraseña
 # DB_HOST=localhost
+# DB_DIALECT=mysql
 # JWT_SECRET=una_clave_secreta_muy_segura
 
 # 4. Poblar datos iniciales y aplicar Modelos (IMPORTANTE)
